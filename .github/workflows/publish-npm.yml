@@ -9,9 +9,14 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,13 +24,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
+          node-version: 24
+          cache: npm
+
+      - name: Validate package metadata
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PACKAGE_NAME" != "@wrenfix/oag" ]; then
+            echo "Unexpected package name: $PACKAGE_NAME"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)."
+            exit 1
+          fi
 
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
-            npm ci
+            npm ci --no-fund --no-audit
           else
             npm install --no-fund --no-audit
           fi
@@ -33,14 +52,8 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Validate tag version
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
-          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)."
-            exit 1
-          fi
+      - name: Verify package contents
+        run: npm pack --dry-run
 
       - name: Publish package
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --registry=https://registry.npmjs.org
