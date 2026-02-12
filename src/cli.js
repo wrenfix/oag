@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name('oag')
   .description('AI CLI prompt registry manager')
-  .version('0.1.0');
+  .version('0.1.1');
 
 registerRemoteCommands(program);
 registerListCommand(program);

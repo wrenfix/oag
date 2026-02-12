@@ -2,6 +2,12 @@
 
 `oag` is a CLI for managing a Git-based AI registry and installing assets into local projects for tools like Claude and Codex.
 
+## Documentation
+
+- [Chinese README](README.zh.md)
+- [Registry Maintenance Guide (English)](docs/add-asset.en.md)
+- [Registry Maintenance Guide (Chinese)](docs/add-asset.zh.md)
+
 ## What oag does
 
 - Connects your local machine to a remote registry repository.
@@ -25,36 +31,16 @@
 
 ## Installation
 
-`oag` is not published to npm yet.
-
-### Option 1: local link (recommended)
+Install from npm:
 
 ```bash
-git clone <repo-url>
-cd oag
-npm install
-npm link
+npm install -g @wrenfix/oag
 ```
 
 Verify:
 
 ```bash
 oag --help
-```
-
-### Option 2: run from source
-
-```bash
-git clone <repo-url>
-cd oag
-npm install
-npm start -- --help
-```
-
-Unlink (optional):
-
-```bash
-npm unlink -g oag
 ```
 
 ## Configuration
@@ -227,17 +213,3 @@ For `mcp` assets, `oag` applies config updates instead of simple file copies:
   - Use a built-in tool name (`claude` or `codex`).
 - **Error: `Invalid mode '<mode>'. Use symlink or copy.`**
   - Choose `--mode copy` or `--mode symlink`.
-
-## For contributors
-
-Run locally:
-
-```bash
-npm start -- --help
-```
-
-Run tests:
-
-```bash
-npm test
-```
