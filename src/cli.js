@@ -1,6 +1,7 @@
 'use strict';
 
 const { Command } = require('commander');
+const { version } = require('../package.json');
 const { registerRemoteCommands } = require('./commands/remote');
 const { registerListCommand } = require('./commands/list');
 const { registerListPresetsCommand } = require('./commands/listPresets');
@@ -13,7 +14,7 @@ const program = new Command();
 program
   .name('oag')
   .description('AI CLI prompt registry manager')
-  .version('0.1.2');
+  .version(version);
 
 registerRemoteCommands(program);
 registerListCommand(program);
