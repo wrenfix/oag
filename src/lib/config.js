@@ -17,7 +17,7 @@ const DEFAULT_TOOLS = {
   },
   codex: {
     paths: {
-      agent: 'AGENT.md',
+      agent: 'AGENTS.md',
       skill: '.codex/skills/',
       mcp: '.codex/config.toml',
       prompt: 'prompts',
