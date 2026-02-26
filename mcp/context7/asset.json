@@ -2,9 +2,8 @@
   "name": "context7",
   "type": "mcp",
   "description": "Context7 MCP server",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "mcp.json" }
   ]
 }
-

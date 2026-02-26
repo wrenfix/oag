@@ -16,6 +16,9 @@ function registerListCommand(program) {
       if (requestedType === 'hook' || requestedType === 'hooks') {
         throw new Error("Type 'hook' has been removed and is no longer supported.");
       }
+      if (requestedType === 'prompt' || requestedType === 'prompts') {
+        throw new Error("Type 'prompt' has been removed and is no longer supported.");
+      }
 
       const config = await loadConfig();
       const remote = await ensureRemote(config);

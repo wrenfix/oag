@@ -1,6 +1,6 @@
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude)",
+  "description": "Project starter preset for oag (codex + claude + opencode)",
   "tools": {
     "codex": [
       "agent/develop-agent",
@@ -11,6 +11,14 @@
       "skill/skill-creator"
     ],
     "claude": [
+      "agent/develop-agent",
+      "mcp/context7",
+      "mcp/chrome-devtools",
+      "skill/commit",
+      "skill/frontend-design",
+      "skill/skill-creator"
+    ],
+    "opencode": [
       "agent/develop-agent",
       "mcp/context7",
       "mcp/chrome-devtools",

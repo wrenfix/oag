@@ -2,7 +2,7 @@
   "name": "chrome-devtools",
   "type": "mcp",
   "description": "Chrome DevTools MCP server",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "mcp.json" }
   ]

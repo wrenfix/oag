@@ -1,6 +1,6 @@
 # oag
 
-`oag` 是一个命令行工具，用于管理基于 Git 的 AI 资产注册表，并把资产安装到本地项目中（例如 Claude 和 Codex）。
+`oag` 是一个命令行工具，用于管理基于 Git 的 AI 资产注册表，并把资产安装到本地项目中（例如 Claude、Codex 和 OpenCode）。
 
 ## 文档导航
 
@@ -15,7 +15,7 @@
 - 按工具与类型交互式启用/禁用资产。
 - 通过 `copy` 或 `symlink` 模式安装文件。
 - 按项目记录已安装项，便于后续重复更新。
-- 处理 Claude 与 Codex 的 MCP 资产配置格式。
+- 处理 Claude、Codex 与 OpenCode 的 MCP 资产配置格式。
 
 ## 核心特性
 
@@ -23,12 +23,14 @@
 - 内置面向工具的安装路径映射，支持：
   - Claude
   - Codex
+  - OpenCode
 - `oag install` 提供交互式选择界面。
 - 支持通过 `oag preset` 按模板收敛安装。
 - `oag update` 基于状态进行更新。
 - MCP 格式支持：
   - Claude：`.mcp.json`
   - Codex：`.codex/config.toml`
+  - OpenCode：`opencode.json`
 
 ## 安装
 
@@ -132,7 +134,7 @@ oag remote add https://github.com/<you>/<your-registry>.git main
 
 选项：
 
-- `--type <type>`：按类型过滤（如 `agent`、`skill`、`prompt`、`mcp`）
+- `--type <type>`：按类型过滤（如 `agent`、`skill`、`mcp`）
 - `--tool <name>`：按工具兼容性过滤
 
 示例：
@@ -147,7 +149,7 @@ oag list --type skill --tool codex
 
 选项：
 
-- `--tool <name>`：目标工具（如 `claude`、`codex`）
+- `--tool <name>`：目标工具（如 `claude`、`codex`、`opencode`）
 - `--project <path>`：项目根目录（默认：当前目录）
 - `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
 
@@ -222,14 +224,18 @@ oag update --tool claude
 - `agent` -> `CLAUDE.md`
 - `skill` -> `.claude/skills/`
 - `mcp` -> `.mcp.json`
-- `prompt` -> `prompts`
 
 **Codex**
 
 - `agent` -> `AGENTS.md`
 - `skill` -> `.codex/skills/`
 - `mcp` -> `.codex/config.toml`
-- `prompt` -> `prompts`
+
+**OpenCode**
+
+- `agent` -> `AGENTS.md`
+- `skill` -> `.opencode/skills/`
+- `mcp` -> `opencode.json`
 
 ### 3) 项目状态
 
@@ -248,7 +254,7 @@ oag update --tool claude
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude)",
+  "description": "Project starter preset for oag (codex + claude + opencode)",
   "tools": {
     "codex": [
       "agent/develop-agent",
@@ -259,6 +265,14 @@ oag update --tool claude
       "skill/skill-creator"
     ],
     "claude": [
+      "agent/develop-agent",
+      "mcp/context7",
+      "mcp/chrome-devtools",
+      "skill/commit",
+      "skill/frontend-design",
+      "skill/skill-creator"
+    ],
+    "opencode": [
       "agent/develop-agent",
       "mcp/context7",
       "mcp/chrome-devtools",
@@ -283,6 +297,8 @@ oag update --tool claude
 
 - 对 Claude：服务会合并到 `.mcp.json`。
 - 对 Codex：服务会写入 `.codex/config.toml` 的 `mcp_servers`。
+- 对 OpenCode：服务会写入 `opencode.json` 的 `mcp` 对象（例如 `{ "mcp": { "context7": { ... } } }`）。
+- OpenCode 旧版 `mcp` 数组格式会在安装/更新时自动迁移为对象格式。
 - 在重装/更新时，`oag` 会利用状态信息安全地回滚并重新应用受管 MCP 条目。
 
 ## 故障排查
@@ -291,14 +307,16 @@ oag update --tool claude
   - 先执行 `oag remote add <url> [branch]`。
 - **错误：`Type 'hook' has been removed and is no longer supported.`**
   - `hook` 已弃用，不能再作为新类型进行列出或安装。
+- **错误：`Type 'prompt' has been removed and is no longer supported.`**
+  - `prompt` 已弃用，不能再作为新类型进行列出或安装。
 - **错误：`Tool '<name>' is not configured.`**
-  - 使用内置工具名（`claude` 或 `codex`）。
+  - 使用内置工具名（`claude`、`codex` 或 `opencode`）。
 - **错误：`Invalid mode '<mode>'. Use symlink or copy.`**
   - 请选择 `--mode copy` 或 `--mode symlink`。
 - **错误：`Preset '<name>' not found`**
   - 检查 `presets/*.json` 是否存在该模板，且 `name` 与参数一致。
 - **错误：`Preset '<name>' does not define assets for tool '<tool>'`**
-  - 在模板 `tools` 中补充对应工具键（如 `codex` 或 `claude`）。
+  - 在模板 `tools` 中补充对应工具键（如 `codex`、`claude` 或 `opencode`）。
 - **错误：`Invalid preset: ... (invalid asset ID '...', expected type/name)`**
   - 将资产 ID 改为 `type/name` 格式（例如 `skill/commit`）。
 - **错误：`Preset '<name>' has invalid assets for tool '<tool>'`**

@@ -11,7 +11,6 @@ const DEFAULT_TOOLS = {
       agent: 'CLAUDE.md',
       skill: '.claude/skills/',
       mcp: '.mcp.json',
-      prompt: 'prompts',
     },
     settingsPath: '.claude/settings.json',
   },
@@ -20,7 +19,13 @@ const DEFAULT_TOOLS = {
       agent: 'AGENTS.md',
       skill: '.codex/skills/',
       mcp: '.codex/config.toml',
-      prompt: 'prompts',
+    },
+  },
+  opencode: {
+    paths: {
+      agent: 'AGENTS.md',
+      skill: '.opencode/skills/',
+      mcp: 'opencode.json',
     },
   },
 };

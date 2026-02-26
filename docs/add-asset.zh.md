@@ -1,10 +1,10 @@
 # 资产仓库维护指南（新增资产）
 
-> 适用范围：维护你自己的资产 registry 仓库（`agent` / `skill` / `prompt` / `mcp`）及预设（`preset`）的团队或个人。
+> 适用范围：维护你自己的资产 registry 仓库（`agent` / `skill` / `mcp`）及预设（`preset`）的团队或个人。
 
 ## 1) 快速流程
 
-1. 在你的资产仓库中按类型创建目录（`agents/`、`skills/`、`prompts/`、`mcp/`）。
+1. 在你的资产仓库中按类型创建目录（`agents/`、`skills/`、`mcp/`）。
 2. 新建资产子目录与 `asset.json`。
 3. 添加资产文件（如 `AGENT.md`、`SKILL.md`、`mcp.json`）。
 4. 按需新增 `presets/*.json`（用于批量安装模板）。
@@ -13,13 +13,13 @@
 
 ## 2) 仓库边界说明
 
-- **资产仓库（你维护）**：存放资产内容、`asset.json` 与预设模板（`presets/*.json`），例如 `agents/*`、`skills/*`、`prompts/*`、`mcp/*`、`presets/*`。
+- **资产仓库（你维护）**：存放资产内容、`asset.json` 与预设模板（`presets/*.json`），例如 `agents/*`、`skills/*`、`mcp/*`、`presets/*`。
 - **使用方项目（业务项目）**：执行 `oag` 命令安装资产，不直接维护 registry 文件结构。
 - **oag 工具仓库**：CLI 代码仓库，与资产仓库分离；本指南关注的是资产仓库维护。
 
 ## 3) 固定目录结构（当前 oag 识别规则）
 
-当前 `oag` 会发现并加载四类资产目录与一类预设目录：
+当前 `oag` 会发现并加载三类资产目录与一类预设目录：
 
 ```text
 agents/
@@ -39,11 +39,6 @@ mcp/
     asset.json
     mcp.json
 
-prompts/
-  <asset-name>/
-    asset.json
-    <your-prompt-file>
-
 presets/
   <preset-name>.json
 ```
@@ -60,9 +55,9 @@ presets/
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
 | `name` | 建议填写 | 资产名；未填写时回退到目录名。 |
-| `type` | 建议填写 | `agent`、`skill`、`prompt`、`mcp`。 |
+| `type` | 建议填写 | `agent`、`skill`、`mcp`。 |
 | `description` | 否 | 资产描述。 |
-| `tools` | 否 | `claude`、`codex`；留空表示不限制。 |
+| `tools` | 否 | `claude`、`codex`、`opencode`；留空表示不限制。 |
 | `files` | 是 | 文件列表；每项必须包含 `source`。 |
 
 通用模板：
@@ -72,7 +67,7 @@ presets/
   "name": "my-asset",
   "type": "skill",
   "description": "简短描述",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "SKILL.md" }
   ]
@@ -100,7 +95,7 @@ agents/code-review-agent/
   "name": "code-review-agent",
   "type": "agent",
   "description": "Code review assistant",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "AGENT.md" }
   ]
@@ -142,7 +137,7 @@ mcp/my-mcp-server/
   "name": "my-mcp-server",
   "type": "mcp",
   "description": "Example MCP server",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "mcp.json" }
   ]
@@ -164,27 +159,7 @@ mcp/my-mcp-server/
 MCP 注意事项：
 
 - MCP 资产必须有且仅有一个可用 JSON 配置文件（推荐 `mcp.json`）。
-- 对 Codex，`sse` 类型不受支持，请使用 `stdio` 或 `http`。
-
-### 5.4 Prompt
-
-```text
-prompts/review-summary/
-  asset.json
-  summary.md
-```
-
-```json
-{
-  "name": "review-summary",
-  "type": "prompt",
-  "description": "Prompt template for review summary",
-  "tools": ["claude", "codex"],
-  "files": [
-    { "source": "summary.md" }
-  ]
-}
-```
+- 对 Codex 与 OpenCode，`sse` 类型不受支持，请使用 `stdio` 或 `http`。
 
 ## 6) 新增预设模板（presets）
 
@@ -202,7 +177,7 @@ prompts/review-summary/
 | --- | --- | --- |
 | `name` | 是 | 预设名，需在同一 registry 内唯一。 |
 | `description` | 否 | 预设描述。 |
-| `tools` | 是 | 对象；key 为工具名（如 `codex`、`claude`），value 为资产 ID 数组。 |
+| `tools` | 是 | 对象；key 为工具名（如 `codex`、`claude`、`opencode`），value 为资产 ID 数组。 |
 
 关键规则：
 
@@ -218,7 +193,8 @@ prompts/review-summary/
   "description": "Starter bundle",
   "tools": {
     "codex": ["agent/my-agent"],
-    "claude": ["agent/my-agent"]
+    "claude": ["agent/my-agent"],
+    "opencode": ["agent/my-agent"]
   }
 }
 ```
@@ -228,7 +204,7 @@ prompts/review-summary/
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude)",
+  "description": "Project starter preset for oag (codex + claude + opencode)",
   "tools": {
     "codex": [
       "agent/develop-agent",
@@ -239,6 +215,14 @@ prompts/review-summary/
       "skill/skill-creator"
     ],
     "claude": [
+      "agent/develop-agent",
+      "mcp/context7",
+      "mcp/chrome-devtools",
+      "skill/commit",
+      "skill/frontend-design",
+      "skill/skill-creator"
+    ],
+    "opencode": [
       "agent/develop-agent",
       "mcp/context7",
       "mcp/chrome-devtools",
@@ -265,10 +249,12 @@ prompts/review-summary/
 # 列出预设
 oag list-presets --tool codex
 oag list-presets --tool claude
+oag list-presets --tool opencode
 
 # 应用预设（按工具分别验证）
 oag preset --name oag-starter --tool codex --mode copy
 oag preset --name oag-starter --tool claude --mode copy
+oag preset --name oag-starter --tool opencode --mode copy
 ```
 
 ## 7) 发布与验证（维护者视角）
@@ -290,8 +276,10 @@ oag remote add <your-registry-git-url> <branch>
 # 验证可见性
 oag list --tool claude
 oag list --tool codex
+oag list --tool opencode
 oag list-presets --tool claude
 oag list-presets --tool codex
+oag list-presets --tool opencode
 
 # 验证安装与更新
 oag install --tool claude --mode copy
@@ -315,12 +303,12 @@ oag update --tool claude
    - 补充 `mcp.json` 并加入 `files`。
 4. `MCP asset '...' has multiple JSON files`
    - 仅保留一个配置 JSON（推荐 `mcp.json`）。
-5. `Codex does not support MCP server type "sse"`
+5. `Codex does not support MCP server type "sse"` / `OpenCode does not support MCP server type "sse"`
    - 将 `sse` 改为 `stdio` 或 `http`。
 6. `Preset '<name>' not found`
    - 检查预设文件是否存在于 `presets/*.json`，以及 `name` 是否拼写一致。
 7. `Preset '<name>' does not define assets for tool '<tool>'`
-   - 在 `tools` 中补充对应工具键（如 `codex` 或 `claude`）。
+   - 在 `tools` 中补充对应工具键（如 `codex`、`claude` 或 `opencode`）。
 8. `Invalid preset: ... (invalid asset ID '...', expected type/name)`
    - 将资产 ID 改为 `type/name` 格式（例如 `skill/commit`）。
 9. `Preset '<name>' has invalid assets for tool '<tool>'`

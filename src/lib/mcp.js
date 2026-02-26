@@ -133,6 +133,52 @@ function extractBearerEnvVar(value) {
   return match ? match[1] : null;
 }
 
+function rewriteEnvPlaceholders(value) {
+  return String(value).replace(/\$\{([A-Z0-9_]+)\}/g, '{env:$1}');
+}
+
+function normalizeLegacyOpencodeMcpArray(entries, configPath) {
+  const serverMap = {};
+
+  for (const [index, entry] of entries.entries()) {
+    if (!isPlainObject(entry)) {
+      throw new Error(`Invalid JSON: mcp[${index}] must be an object (${configPath})`);
+    }
+
+    if (typeof entry.id !== 'string' || !entry.id.trim()) {
+      throw new Error(`Invalid JSON: mcp[${index}].id must be a non-empty string (${configPath})`);
+    }
+
+    const normalizedEntry = { ...entry };
+    delete normalizedEntry.id;
+    serverMap[entry.id] = normalizedEntry;
+  }
+
+  return serverMap;
+}
+
+function normalizeOpencodeMcpMap(value, configPath) {
+  if (value === undefined) {
+    return {};
+  }
+
+  if (Array.isArray(value)) {
+    return normalizeLegacyOpencodeMcpArray(value, configPath);
+  }
+
+  if (!isPlainObject(value)) {
+    throw new Error(`Invalid JSON: mcp must be an object (${configPath})`);
+  }
+
+  for (const [name, entry] of Object.entries(value)) {
+    if (!isPlainObject(entry)) {
+      throw new Error(`Invalid JSON: mcp.${name} must be an object (${configPath})`);
+    }
+  }
+
+  return value;
+}
+
 function claudeServerToCodex(server) {
   if (!isPlainObject(server)) {
     throw new Error('Invalid MCP server: expected an object.');
@@ -217,6 +263,74 @@ function claudeServerToCodex(server) {
   throw new Error(`Unsupported MCP server type '${String(type)}'.`);
 }
 
+function claudeServerToOpencode(name, server) {
+  if (typeof name !== 'string' || !name.trim()) {
+    throw new Error('Invalid MCP server name.');
+  }
+
+  if (!isPlainObject(server)) {
+    throw new Error('Invalid MCP server: expected an object.');
+  }
+
+  const type = server.type;
+  if (type === 'stdio') {
+    if (typeof server.command !== 'string' || !server.command.trim()) {
+      throw new Error('Invalid stdio server: missing command.');
+    }
+
+    const command = [rewriteEnvPlaceholders(server.command)];
+    if (Array.isArray(server.args)) {
+      command.push(...server.args.map((value) => rewriteEnvPlaceholders(value)));
+    }
+
+    const out = {
+      type: 'local',
+      command,
+    };
+
+    if (isPlainObject(server.env)) {
+      const environment = {};
+      for (const [envName, envValue] of Object.entries(server.env)) {
+        environment[envName] = rewriteEnvPlaceholders(envValue);
+      }
+      if (Object.keys(environment).length > 0) {
+        out.environment = environment;
+      }
+    }
+
+    return out;
+  }
+
+  if (type === 'http') {
+    if (typeof server.url !== 'string' || !server.url.trim()) {
+      throw new Error('Invalid http server: missing url.');
+    }
+
+    const out = {
+      type: 'remote',
+      url: rewriteEnvPlaceholders(server.url),
+    };
+
+    if (isPlainObject(server.headers)) {
+      const headers = {};
+      for (const [headerName, headerValue] of Object.entries(server.headers)) {
+        headers[headerName] = rewriteEnvPlaceholders(headerValue);
+      }
+      if (Object.keys(headers).length > 0) {
+        out.headers = headers;
+      }
+    }
+
+    return out;
+  }
+
+  if (type === 'sse') {
+    throw new Error('OpenCode does not support MCP server type "sse".');
+  }
+
+  throw new Error(`Unsupported MCP server type '${String(type)}'.`);
+}
+
 async function installMcp(asset, projectRoot, tool, toolConfig) {
   const configPath = resolveToolConfigPath(projectRoot, toolConfig);
   const servers = await loadAssetMcpServers(asset);
@@ -289,6 +403,37 @@ async function installMcp(asset, projectRoot, tool, toolConfig) {
 
     await ensureDir(path.dirname(configPath));
     await fs.writeFile(configPath, toml.stringify(config), 'utf8');
+    return { targets: [configPath], mcpState };
+  }
+
+  if (tool === 'opencode') {
+    const existing = await readJsonFileIfExists(configPath);
+    const config = existing || {};
+
+    if (!isPlainObject(config)) {
+      throw new Error(`Invalid JSON root (expected object): ${configPath}`);
+    }
+    config.mcp = normalizeOpencodeMcpMap(config.mcp, configPath);
+
+    const mcpState = {
+      format: 'opencode_json',
+      configPath,
+      servers: {},
+    };
+
+    for (const [name, cfg] of Object.entries(servers)) {
+      const opencodeCfg = claudeServerToOpencode(name, cfg);
+      const had = Object.prototype.hasOwnProperty.call(config.mcp, name);
+      const previous = had ? cloneJson(config.mcp[name]) : null;
+      config.mcp[name] = opencodeCfg;
+      mcpState.servers[name] = {
+        action: had ? 'replaced' : 'added',
+        previous,
+        installed: cloneJson(opencodeCfg),
+      };
+    }
+
+    await writeJsonFile(configPath, config);
     return { targets: [configPath], mcpState };
   }
 
@@ -370,6 +515,41 @@ async function uninstallMcpByState(projectRoot, toolConfig, mcpState) {
     await fs.writeFile(configPath, toml.stringify(config), 'utf8');
     return;
   }
+
+  if (mcpState.format === 'opencode_json') {
+    const existing = await readJsonFileIfExists(configPath);
+    if (!existing || !isPlainObject(existing)) {
+      return;
+    }
+
+    try {
+      existing.mcp = normalizeOpencodeMcpMap(existing.mcp, configPath);
+    } catch (error) {
+      return;
+    }
+
+    for (const [name, entry] of Object.entries(servers)) {
+      if (!entry || !entry.action) {
+        continue;
+      }
+
+      if (entry.action === 'added') {
+        delete existing.mcp[name];
+      } else if (entry.action === 'replaced') {
+        if (entry.previous === null || entry.previous === undefined) {
+          delete existing.mcp[name];
+        } else {
+          const previous = cloneJson(entry.previous);
+          if (isPlainObject(previous) && Object.prototype.hasOwnProperty.call(previous, 'id')) {
+            delete previous.id;
+          }
+          existing.mcp[name] = previous;
+        }
+      }
+    }
+
+    await writeJsonFile(configPath, existing);
+  }
 }
 
 module.exports = {
@@ -377,5 +557,5 @@ module.exports = {
   uninstallMcpByState,
   // Exported for tests.
   claudeServerToCodex,
+  claudeServerToOpencode,
 };
-

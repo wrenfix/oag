@@ -2,7 +2,7 @@
   "name": "develop-agent",
   "type": "agent",
   "description": "通用开发 Agent",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     {
       "source": "AGENT.md"

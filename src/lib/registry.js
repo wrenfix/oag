@@ -8,7 +8,6 @@ const TYPE_DIRS = {
   agent: 'agents',
   skill: 'skills',
   mcp: 'mcp',
-  prompt: 'prompts',
 };
 
 async function loadAssets(registryPath) {

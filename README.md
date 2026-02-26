@@ -1,6 +1,6 @@
 # oag
 
-`oag` is a CLI for managing a Git-based AI registry and installing assets into local projects for tools like Claude and Codex.
+`oag` is a CLI for managing a Git-based AI registry and installing assets into local projects for tools like Claude, Codex, and OpenCode.
 
 ## Documentation
 
@@ -15,7 +15,7 @@
 - Lets you enable/disable assets interactively per tool and per type.
 - Installs files using `copy` or `symlink` mode.
 - Tracks installed items per project so updates are repeatable.
-- Handles MCP assets for Claude and Codex config formats.
+- Handles MCP assets for Claude, Codex, and OpenCode config formats.
 
 ## Key features
 
@@ -23,12 +23,14 @@
 - **Tool-aware installs** with built-in path mappings for:
   - Claude
   - Codex
+  - OpenCode
 - **Interactive selection UI** in `oag install`.
 - **Preset-based reconcile install** via `oag preset`.
 - **State-based updates** with `oag update`.
 - **MCP support** with format handling:
   - Claude: `.mcp.json`
   - Codex: `.codex/config.toml`
+  - OpenCode: `opencode.json`
 
 ## Installation
 
@@ -132,7 +134,7 @@ List assets from the synced registry.
 
 Options:
 
-- `--type <type>`: filter by type (for example `agent`, `skill`, `prompt`, `mcp`)
+- `--type <type>`: filter by type (for example `agent`, `skill`, `mcp`)
 - `--tool <name>`: filter by tool compatibility hint
 
 Example:
@@ -147,7 +149,7 @@ Interactively enable or disable assets for a tool in a project.
 
 Options:
 
-- `--tool <name>`: target tool (for example `claude`, `codex`)
+- `--tool <name>`: target tool (for example `claude`, `codex`, `opencode`)
 - `--project <path>`: project root (default: current directory)
 - `--mode <mode>`: `copy` or `symlink` (default: `copy`)
 
@@ -222,14 +224,18 @@ Before `list`, `list-presets`, `install`, `preset`, and `update`, `oag` syncs yo
 - `agent` -> `CLAUDE.md`
 - `skill` -> `.claude/skills/`
 - `mcp` -> `.mcp.json`
-- `prompt` -> `prompts`
 
 **Codex**
 
 - `agent` -> `AGENTS.md`
 - `skill` -> `.codex/skills/`
 - `mcp` -> `.codex/config.toml`
-- `prompt` -> `prompts`
+
+**OpenCode**
+
+- `agent` -> `AGENTS.md`
+- `skill` -> `.opencode/skills/`
+- `mcp` -> `opencode.json`
 
 ### 3) Project state
 
@@ -248,7 +254,7 @@ Example:
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude)",
+  "description": "Project starter preset for oag (codex + claude + opencode)",
   "tools": {
     "codex": [
       "agent/develop-agent",
@@ -259,6 +265,14 @@ Example:
       "skill/skill-creator"
     ],
     "claude": [
+      "agent/develop-agent",
+      "mcp/context7",
+      "mcp/chrome-devtools",
+      "skill/commit",
+      "skill/frontend-design",
+      "skill/skill-creator"
+    ],
+    "opencode": [
       "agent/develop-agent",
       "mcp/context7",
       "mcp/chrome-devtools",
@@ -283,6 +297,8 @@ For `mcp` assets, `oag` applies config updates instead of simple file copies:
 
 - For Claude, servers are merged into `.mcp.json`.
 - For Codex, servers are written under `mcp_servers` in `.codex/config.toml`.
+- For OpenCode, servers are written into the `mcp` object in `opencode.json` (for example, `{ "mcp": { "context7": { ... } } }`).
+- Legacy OpenCode `mcp` array format is migrated to object format during install/update.
 - During reinstall/update, `oag` uses stored state to rollback/reapply managed MCP entries safely.
 
 ## Troubleshooting
@@ -291,14 +307,16 @@ For `mcp` assets, `oag` applies config updates instead of simple file copies:
   - Run `oag remote add <url> [branch]` first.
 - **Error: `Type 'hook' has been removed and is no longer supported.`**
   - `hook` is deprecated and cannot be listed/installed as a new type.
+- **Error: `Type 'prompt' has been removed and is no longer supported.`**
+  - `prompt` is deprecated and cannot be listed/installed as a new type.
 - **Error: `Tool '<name>' is not configured.`**
-  - Use a built-in tool name (`claude` or `codex`).
+  - Use a built-in tool name (`claude`, `codex`, or `opencode`).
 - **Error: `Invalid mode '<mode>'. Use symlink or copy.`**
   - Choose `--mode copy` or `--mode symlink`.
 - **Error: `Preset '<name>' not found`**
   - Check whether the preset exists under `presets/*.json` and the `name` matches your argument.
 - **Error: `Preset '<name>' does not define assets for tool '<tool>'`**
-  - Add the target tool key (for example `codex` or `claude`) under `tools`.
+  - Add the target tool key (for example `codex`, `claude`, or `opencode`) under `tools`.
 - **Error: `Invalid preset: ... (invalid asset ID '...', expected type/name)`**
   - Use `type/name` format for each asset ID (for example `skill/commit`).
 - **Error: `Preset '<name>' has invalid assets for tool '<tool>'`**

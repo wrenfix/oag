@@ -1,10 +1,10 @@
 # Registry Maintenance Guide (Adding Assets)
 
-> Scope: teams or individuals maintaining their own asset registry repository for `agent`, `skill`, `prompt`, `mcp` assets and preset templates (`preset`).
+> Scope: teams or individuals maintaining their own asset registry repository for `agent`, `skill`, `mcp` assets and preset templates (`preset`).
 
 ## 1) Quick Flow
 
-1. Create type roots in your registry repo (`agents/`, `skills/`, `prompts/`, `mcp/`).
+1. Create type roots in your registry repo (`agents/`, `skills/`, `mcp/`).
 2. Create an asset directory and `asset.json`.
 3. Add asset files (for example `AGENT.md`, `SKILL.md`, `mcp.json`).
 4. Add `presets/*.json` as needed (for bundled installs).
@@ -13,13 +13,13 @@
 
 ## 2) Repository Boundaries
 
-- **Registry repository (you maintain):** stores asset source files, `asset.json` manifests, and preset templates (`presets/*.json`) such as `agents/*`, `skills/*`, `prompts/*`, `mcp/*`, and `presets/*`.
+- **Registry repository (you maintain):** stores asset source files, `asset.json` manifests, and preset templates (`presets/*.json`) such as `agents/*`, `skills/*`, `mcp/*`, and `presets/*`.
 - **Consumer project:** runs `oag` commands to install assets; it does not own registry structure.
 - **oag tool repository:** contains CLI source code; it is separate from your registry repository.
 
 ## 3) Fixed Directory Structure (Current `oag` Discovery Rules)
 
-Current `oag` discovery loads four asset roots and one preset root:
+Current `oag` discovery loads three asset roots and one preset root:
 
 ```text
 agents/
@@ -33,11 +33,6 @@ skills/
     SKILL.md
     references/... (optional)
     scripts/...    (optional)
-
-prompts/
-  <asset-name>/
-    asset.json
-    <your-prompt-file>
 
 mcp/
   <asset-name>/
@@ -60,9 +55,9 @@ Naming recommendations:
 | Field | Required | Description |
 | --- | --- | --- |
 | `name` | Recommended | Asset name; falls back to folder name if omitted. |
-| `type` | Recommended | `agent`, `skill`, `prompt`, or `mcp`. |
+| `type` | Recommended | `agent`, `skill`, or `mcp`. |
 | `description` | No | Optional description. |
-| `tools` | No | `claude` and/or `codex`; empty means unrestricted. |
+| `tools` | No | `claude`, `codex`, and/or `opencode`; empty means unrestricted. |
 | `files` | Yes | File list; each entry must include `source`. |
 
 Generic template:
@@ -72,7 +67,7 @@ Generic template:
   "name": "my-asset",
   "type": "skill",
   "description": "Short description",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "SKILL.md" }
   ]
@@ -100,7 +95,7 @@ agents/code-review-agent/
   "name": "code-review-agent",
   "type": "agent",
   "description": "Code review assistant",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "AGENT.md" }
   ]
@@ -142,7 +137,7 @@ mcp/my-mcp-server/
   "name": "my-mcp-server",
   "type": "mcp",
   "description": "Example MCP server",
-  "tools": ["claude", "codex"],
+  "tools": ["claude", "codex", "opencode"],
   "files": [
     { "source": "mcp.json" }
   ]
@@ -164,27 +159,7 @@ mcp/my-mcp-server/
 MCP notes:
 
 - MCP assets must provide exactly one usable JSON config file (recommended: `mcp.json`).
-- For Codex, `sse` servers are not supported; use `stdio` or `http`.
-
-### 5.4 Prompt
-
-```text
-prompts/review-summary/
-  asset.json
-  summary.md
-```
-
-```json
-{
-  "name": "review-summary",
-  "type": "prompt",
-  "description": "Prompt template for review summary",
-  "tools": ["claude", "codex"],
-  "files": [
-    { "source": "summary.md" }
-  ]
-}
-```
+- For Codex and OpenCode, `sse` servers are not supported; use `stdio` or `http`.
 
 ## 6) Add Preset Templates (`presets`)
 
@@ -202,7 +177,7 @@ Presets let you bundle multiple assets into a reusable install set so `oag prese
 | --- | --- | --- |
 | `name` | Yes | Preset name; must be unique within the registry. |
 | `description` | No | Optional preset description. |
-| `tools` | Yes | Object; key is tool name (for example `codex`, `claude`), value is an array of asset IDs. |
+| `tools` | Yes | Object; key is tool name (for example `codex`, `claude`, `opencode`), value is an array of asset IDs. |
 
 Important rules:
 
@@ -218,7 +193,8 @@ Minimal template:
   "description": "Starter bundle",
   "tools": {
     "codex": ["agent/my-agent"],
-    "claude": ["agent/my-agent"]
+    "claude": ["agent/my-agent"],
+    "opencode": ["agent/my-agent"]
   }
 }
 ```
@@ -228,7 +204,7 @@ Minimal template:
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude)",
+  "description": "Project starter preset for oag (codex + claude + opencode)",
   "tools": {
     "codex": [
       "agent/develop-agent",
@@ -239,6 +215,14 @@ Minimal template:
       "skill/skill-creator"
     ],
     "claude": [
+      "agent/develop-agent",
+      "mcp/context7",
+      "mcp/chrome-devtools",
+      "skill/commit",
+      "skill/frontend-design",
+      "skill/skill-creator"
+    ],
+    "opencode": [
       "agent/develop-agent",
       "mcp/context7",
       "mcp/chrome-devtools",
@@ -265,10 +249,12 @@ Minimal template:
 # List presets
 oag list-presets --tool codex
 oag list-presets --tool claude
+oag list-presets --tool opencode
 
 # Apply preset (validate per tool)
 oag preset --name oag-starter --tool codex --mode copy
 oag preset --name oag-starter --tool claude --mode copy
+oag preset --name oag-starter --tool opencode --mode copy
 ```
 
 ## 7) Publish and Validate (Maintainer Workflow)
@@ -290,8 +276,10 @@ oag remote add <your-registry-git-url> <branch>
 # Validate discoverability
 oag list --tool claude
 oag list --tool codex
+oag list --tool opencode
 oag list-presets --tool claude
 oag list-presets --tool codex
+oag list-presets --tool opencode
 
 # Validate install and update
 oag install --tool claude --mode copy
@@ -315,12 +303,12 @@ Validation checklist:
    - Add `mcp.json` and include it in `files`.
 4. `MCP asset '...' has multiple JSON files`
    - Keep exactly one JSON config file (recommended: `mcp.json`).
-5. `Codex does not support MCP server type "sse"`
+5. `Codex does not support MCP server type "sse"` / `OpenCode does not support MCP server type "sse"`
    - Replace `sse` with `stdio` or `http`.
 6. `Preset '<name>' not found`
    - Check that the preset file exists under `presets/*.json` and `name` matches.
 7. `Preset '<name>' does not define assets for tool '<tool>'`
-   - Add that tool key (for example `codex` or `claude`) under `tools`.
+   - Add that tool key (for example `codex`, `claude`, or `opencode`) under `tools`.
 8. `Invalid preset: ... (invalid asset ID '...', expected type/name)`
    - Fix asset IDs to `type/name` format (for example `skill/commit`).
 9. `Preset '<name>' has invalid assets for tool '<tool>'`
