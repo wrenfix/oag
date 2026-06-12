@@ -1,0 +1,9 @@
+{
+  "name": "tweetclaw",
+  "type": "skill",
+  "description": "Use the TweetClaw OpenClaw plugin for approval-gated X/Twitter search, posting, media, monitors, webhooks, and giveaway workflows.",
+  "tools": ["claude", "codex", "opencode"],
+  "files": [
+    { "source": "SKILL.md" }
+  ]
+}
