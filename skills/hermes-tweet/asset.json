@@ -1,0 +1,15 @@
+{
+  "name": "hermes-tweet",
+  "type": "skill",
+  "description": "Hermes Agent skill for X/Twitter research, reading, and gated actions through Xquik.",
+  "tools": [
+    "claude",
+    "codex",
+    "opencode"
+  ],
+  "files": [
+    {
+      "source": "SKILL.md"
+    }
+  ]
+}
