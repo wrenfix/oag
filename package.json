@@ -24,9 +24,7 @@
   ],
   "scripts": {
     "start": "node bin/oag.js",
-    "build:pages:data": "node scripts/build-pages-data.js",
-    "test": "node --test",
-    "preview:pages": "node scripts/preview-pages.js"
+    "test": "node --test"
   },
   "publishConfig": {
     "access": "public"
