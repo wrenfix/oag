@@ -6,6 +6,7 @@ const { pathExists } = require('./fs');
 
 const TYPE_DIRS = {
   agent: 'agents',
+  subagent: 'subagents',
   skill: 'skills',
   mcp: 'mcp',
 };

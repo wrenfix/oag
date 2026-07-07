@@ -2,11 +2,8 @@
 
 const fs = require('fs/promises');
 const path = require('path');
-const { ensureDir, pathExists } = require('./fs');
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
+const { ensureDir, pathExists, isPlainObject } = require('./fs');
+const { requireToml } = require('./toml');
 
 function cloneJson(value) {
   // State is stored as JSON; keep snapshots JSON-serializable and detached.
@@ -104,17 +101,6 @@ async function loadAssetMcpServers(asset) {
   }
 
   return servers;
-}
-
-function requireToml() {
-  try {
-    // eslint-disable-next-line global-require
-    return require('@iarna/toml');
-  } catch (error) {
-    throw new Error(
-      'TOML support not installed. Please add dependency @iarna/toml.'
-    );
-  }
 }
 
 function extractEnvVarRef(value) {

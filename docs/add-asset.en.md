@@ -1,31 +1,36 @@
 # Registry Maintenance Guide (Adding Assets)
 
-> Scope: teams or individuals maintaining their own asset registry repository for `agent`, `skill`, `mcp` assets and preset templates (`preset`).
+> Scope: teams or individuals maintaining their own asset registry repository for `agent`, `subagent`, `skill`, `mcp` assets and plugins (`plugin`).
 
 ## 1) Quick Flow
 
 1. Create type roots in your registry repo (`agents/`, `skills/`, `mcp/`).
 2. Create an asset directory and `asset.json`.
 3. Add asset files (for example `AGENT.md`, `SKILL.md`, `mcp.json`).
-4. Add `presets/*.json` as needed (for bundled installs).
+4. Add `plugins/*.json` as needed (for bundled installs).
 5. Commit and push to your registry branch.
-6. Validate from a consumer project using `oag list/list-presets/install/preset/update`.
+6. Validate from a consumer project using `oag list/plugin/install/update`.
 
 ## 2) Repository Boundaries
 
-- **Registry repository (you maintain):** stores asset source files, `asset.json` manifests, and preset templates (`presets/*.json`) such as `agents/*`, `skills/*`, `mcp/*`, and `presets/*`.
+- **Registry repository (you maintain):** stores asset source files, `asset.json` manifests, and plugins (`plugins/*.json`) such as `agents/*`, `skills/*`, `mcp/*`, and `plugins/*`.
 - **Consumer project:** runs `oag` commands to install assets; it does not own registry structure.
 - **oag tool repository:** contains CLI source code; it is separate from your registry repository.
 
 ## 3) Fixed Directory Structure (Current `oag` Discovery Rules)
 
-Current `oag` discovery loads three asset roots and one preset root:
+Current `oag` discovery loads three asset roots and one plugin root:
 
 ```text
 agents/
   <asset-name>/
     asset.json
     AGENT.md
+
+subagents/
+  <asset-name>/
+    asset.json
+    agent.md
 
 skills/
   <asset-name>/
@@ -39,8 +44,8 @@ mcp/
     asset.json
     mcp.json
 
-presets/
-  <preset-name>.json
+plugins/
+  <plugin-name>.json
 ```
 
 Naming recommendations:
@@ -48,14 +53,14 @@ Naming recommendations:
 - Use lowercase kebab-case for folder names (for example `my-skill`).
 - Keep `name` in `asset.json` consistent with the folder name.
 - Asset ID is `type/name` (for example `skill/my-skill`).
-- Use lowercase kebab-case for preset filenames (for example `starter.json`).
+- Use lowercase kebab-case for plugin filenames (for example `starter.json`).
 
 ## 4) `asset.json` Rules
 
 | Field | Required | Description |
 | --- | --- | --- |
 | `name` | Recommended | Asset name; falls back to folder name if omitted. |
-| `type` | Recommended | `agent`, `skill`, or `mcp`. |
+| `type` | Recommended | `agent`, `subagent`, `skill`, or `mcp`. |
 | `description` | No | Optional description. |
 | `tools` | No | `claude`, `codex`, and/or `opencode`; empty means unrestricted. |
 | `files` | Yes | File list; each entry must include `source`. |
@@ -102,7 +107,46 @@ agents/code-review-agent/
 }
 ```
 
-### 5.2 Skill
+### 5.2 Subagent
+
+```text
+subagents/code-reviewer/
+  asset.json
+  agent.md
+```
+
+```json
+{
+  "name": "code-reviewer",
+  "type": "subagent",
+  "description": "Reviews code changes for correctness, security, and missing tests",
+  "tools": ["claude", "codex", "opencode"],
+  "files": [
+    { "source": "agent.md" }
+  ]
+}
+```
+
+`agent.md` — minimal front matter (`name`, `description`) with the system prompt as the body:
+
+```markdown
+---
+name: code-reviewer
+description: Reviews code changes for correctness, security, and missing tests
+---
+
+You are a focused code reviewer. Prioritize correctness, security, behavior
+regressions, and missing tests. Report only issues that matter.
+```
+
+Subagent notes:
+
+- A subagent asset must contain exactly one file.
+- Claude / OpenCode receive the Markdown verbatim (`.claude/agents/<name>.md`, `.opencode/agents/<name>.md`).
+- Codex receives a converted `.codex/agents/<name>.toml` with `name`, `description`, and `developer_instructions` (the body).
+- Do not add `model` or `tools` — those fields differ per tool, so they are left out and each tool inherits them from the parent/main session. Tool-specific keys you add are passed through for the Markdown tools and ignored by Codex.
+
+### 5.3 Skill
 
 ```text
 skills/commit-helper/
@@ -124,7 +168,7 @@ skills/commit-helper/
 }
 ```
 
-### 5.3 MCP
+### 5.4 MCP
 
 ```text
 mcp/my-mcp-server/
@@ -161,29 +205,29 @@ MCP notes:
 - MCP assets must provide exactly one usable JSON config file (recommended: `mcp.json`).
 - For Codex and OpenCode, `sse` servers are not supported; use `stdio` or `http`.
 
-## 6) Add Preset Templates (`presets`)
+## 6) Add Plugins (`plugins`)
 
-Presets let you bundle multiple assets into a reusable install set so `oag preset` can reconcile a project to the exact target state in one run.
+Plugins let you bundle multiple assets into a reusable set. Multiple plugins can coexist: enabling several plugins installs the union of their assets, and disabling one plugin only removes assets that are no longer required by any other enabled plugin or manual install.
 
 ### 6.1 Directory and File Location
 
-- Create a `presets/` directory at the registry root (if missing).
-- Each `presets/*.json` file represents one preset template.
-- Preset files belong to the registry repository, not the consumer project.
+- Create a `plugins/` directory at the registry root (if missing).
+- Each `plugins/*.json` file represents one plugin.
+- Plugin files belong to the registry repository, not the consumer project.
 
-### 6.2 `preset` JSON Rules
+### 6.2 `plugin` JSON Rules
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `name` | Yes | Preset name; must be unique within the registry. |
-| `description` | No | Optional preset description. |
-| `tools` | Yes | Object; key is tool name (for example `codex`, `claude`, `opencode`), value is an array of asset IDs. |
+| `name` | Yes | Plugin name; must be unique within the registry. |
+| `description` | No | Optional plugin description. |
+| `assets` | Yes | Array of asset IDs in `type/name` form; at least one entry. |
 
 Important rules:
 
 - Asset IDs must use `type/name` format (for example `skill/commit`).
-- `tools` must define at least one tool.
-- `tools.<tool>` must be an array of strings; empty strings and invalid IDs are rejected.
+- `assets` must contain at least one entry; duplicate IDs are de-duplicated.
+- Each asset is installed to every compatible tool. There is no per-tool grouping (`tools: { claude: [], codex: [], opencode: [] }`) anymore.
 
 Minimal template:
 
@@ -191,11 +235,7 @@ Minimal template:
 {
   "name": "my-starter",
   "description": "Starter bundle",
-  "tools": {
-    "codex": ["agent/my-agent"],
-    "claude": ["agent/my-agent"],
-    "opencode": ["agent/my-agent"]
-  }
+  "assets": ["agent/my-agent"]
 }
 ```
 
@@ -204,57 +244,36 @@ Minimal template:
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude + opencode)",
-  "tools": {
-    "codex": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ],
-    "claude": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ],
-    "opencode": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ]
-  }
+  "description": "Project starter plugin for oag",
+  "assets": [
+    "agent/develop-agent",
+    "subagent/code-reviewer",
+    "mcp/context7",
+    "skill/commit"
+  ]
 }
 ```
 
-### 6.4 Strict Validation and Failure Behavior
+### 6.4 Coexistence and Validation Behavior
 
-- `oag preset` validates preset entries strictly:
-  - asset not found;
-  - asset incompatible with selected tool;
-  - missing target path mapping for the asset type on that tool.
-- If any item is invalid, the command fails and does not partially apply changes.
-- Validate asset visibility first with `oag list --tool <tool>`, then maintain `presets/*.json`.
+- Multiple plugins coexist: the installed set is the union of all enabled plugins plus any manually installed assets.
+- Disabling a plugin only removes assets that are no longer required by any other enabled plugin or manual install.
+- `oag plugin add` validates every asset in the plugin and fails without applying partial changes if any asset:
+  - is not found in the registry;
+  - is not applicable to any configured tool.
+- Validate asset visibility first with `oag list`, then maintain `plugins/*.json`.
 
 ### 6.5 Maintainer Validation Steps
 
 ```bash
-# List presets
-oag list-presets --tool codex
-oag list-presets --tool claude
-oag list-presets --tool opencode
+# List plugins (shows which are enabled)
+oag plugin list
 
-# Apply preset (validate per tool)
-oag preset --name oag-starter --tool codex --mode copy
-oag preset --name oag-starter --tool claude --mode copy
-oag preset --name oag-starter --tool opencode --mode copy
+# Enable a plugin (installs to all compatible tools)
+oag plugin add oag-starter --mode copy
+
+# Disable a plugin
+oag plugin remove oag-starter
 ```
 
 ## 7) Publish and Validate (Maintainer Workflow)
@@ -277,14 +296,12 @@ oag remote add <your-registry-git-url> <branch>
 oag list --tool claude
 oag list --tool codex
 oag list --tool opencode
-oag list-presets --tool claude
-oag list-presets --tool codex
-oag list-presets --tool opencode
+oag plugin list
 
 # Validate install and update
-oag install --tool claude --mode copy
-oag preset --name oag-starter --tool claude --mode copy
-oag update --tool claude
+oag install --mode copy
+oag plugin add oag-starter --mode copy
+oag update
 ```
 
 Validation checklist:
@@ -305,14 +322,12 @@ Validation checklist:
    - Keep exactly one JSON config file (recommended: `mcp.json`).
 5. `Codex does not support MCP server type "sse"` / `OpenCode does not support MCP server type "sse"`
    - Replace `sse` with `stdio` or `http`.
-6. `Preset '<name>' not found`
-   - Check that the preset file exists under `presets/*.json` and `name` matches.
-7. `Preset '<name>' does not define assets for tool '<tool>'`
-   - Add that tool key (for example `codex`, `claude`, or `opencode`) under `tools`.
-8. `Invalid preset: ... (invalid asset ID '...', expected type/name)`
+6. `Plugin '<name>' not found`
+   - Check that the plugin file exists under `plugins/*.json` and `name` matches.
+7. `Invalid plugin: ... (invalid asset ID '...', expected type/name)`
    - Fix asset IDs to `type/name` format (for example `skill/commit`).
-9. `Preset '<name>' has invalid assets for tool '<tool>'`
-   - Resolve each item reported: missing asset, tool mismatch, or missing path mapping.
+8. `Plugin '<name>' has invalid assets`
+   - Resolve each item reported: the asset does not exist in the registry, or it is not applicable to any configured tool.
 
 ## 9) Maintenance Recommendations
 

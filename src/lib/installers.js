@@ -43,6 +43,15 @@ async function installAsset({ asset, projectRoot, toolPaths, mode }) {
     throw new Error(`Asset '${asset.id}' has no files to install.`);
   }
 
+  // Flat-file (template) mappings install a single asset-named file; multiple
+  // sources would all collide on the same target, so require exactly one.
+  const mapping = toolPaths[asset.type];
+  if (typeof mapping === 'string' && mapping.includes('{name}') && asset.files.length > 1) {
+    throw new Error(
+      `Asset '${asset.id}' of type '${asset.type}' must contain exactly one file for flat install.`,
+    );
+  }
+
   const targets = [];
   let baseDir = null;
   for (const file of asset.files) {

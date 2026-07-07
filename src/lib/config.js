@@ -3,12 +3,13 @@
 const fs = require('fs/promises');
 const path = require('path');
 const os = require('os');
-const { ensureDir, pathExists } = require('./fs');
+const { ensureDir, pathExists, isPlainObject } = require('./fs');
 
 const DEFAULT_TOOLS = {
   claude: {
     paths: {
       agent: 'CLAUDE.md',
+      subagent: '.claude/agents/{name}.md',
       skill: '.claude/skills/',
       mcp: '.mcp.json',
     },
@@ -17,6 +18,7 @@ const DEFAULT_TOOLS = {
   codex: {
     paths: {
       agent: 'AGENTS.md',
+      subagent: '.codex/agents/{name}.toml',
       skill: '.codex/skills/',
       mcp: '.codex/config.toml',
     },
@@ -24,6 +26,7 @@ const DEFAULT_TOOLS = {
   opencode: {
     paths: {
       agent: 'AGENTS.md',
+      subagent: '.opencode/agents/{name}.md',
       skill: '.opencode/skills/',
       mcp: 'opencode.json',
     },
@@ -44,10 +47,6 @@ function getDefaultConfig() {
     remote: null,
     tools: DEFAULT_TOOLS,
   };
-}
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function mergeDefaults(target, defaults) {

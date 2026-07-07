@@ -1,0 +1,13 @@
+{
+  "name": "oag-starter",
+  "description": "Project starter plugin for oag",
+  "assets": [
+    "agent/develop-agent",
+    "subagent/code-reviewer",
+    "mcp/context7",
+    "mcp/chrome-devtools",
+    "skill/commit",
+    "skill/frontend-design",
+    "skill/skill-creator"
+  ]
+}

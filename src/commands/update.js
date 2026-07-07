@@ -1,99 +1,35 @@
 'use strict';
 
-const path = require('path');
-const { loadConfig, resolveRegistryPath } = require('../lib/config');
-const { ensureRemote } = require('../lib/remoteEnsure');
-const { ensureRegistrySynced } = require('../lib/registrySync');
-const { loadAssets } = require('../lib/registry');
-const { getHeadCommit } = require('../lib/git');
-const { updateInstalledAssets } = require('../lib/update');
-
-async function safeGetCommit(repoPath) {
-  try {
-    return await getHeadCommit(repoPath);
-  } catch (error) {
-    return 'unknown';
-  }
-}
-
-function formatSkippedList(items, formatLine) {
-  if (items.length === 0) {
-    return;
-  }
-  for (const item of items) {
-    console.log(formatLine(item));
-  }
-}
+const { loadState } = require('../lib/state');
+const { reconcile, computeDesiredIds } = require('../lib/reconcile');
+const { safeGetHeadCommit } = require('../lib/git');
+const { prepare, reportFailures } = require('./shared');
 
 function registerUpdateCommand(program) {
   program
     .command('update')
-    .description('Update installed assets')
-    .option('--tool <name>', 'Tool name')
+    .description('Reinstall managed assets at the latest registry commit')
     .option('--project <path>', 'Project root path')
     .option('--mode <mode>', 'Install mode (symlink|copy)')
     .action(async (options) => {
-      const config = await loadConfig();
-      const remote = await ensureRemote(config);
+      const { config, repoPath, assets, projectRoot } = await prepare(options);
+      const commit = await safeGetHeadCommit(repoPath);
 
-      const projectRoot = path.resolve(options.project || process.cwd());
-
-      const registryRoot = resolveRegistryPath(config);
-      const { repoPath } = await ensureRegistrySynced({ registryRoot, remote });
-      const assets = await loadAssets(repoPath);
-      const commit = await safeGetCommit(repoPath);
-
-      const summary = await updateInstalledAssets({
-        projectRoot,
-        tool: options.tool,
-        mode: options.mode,
-        config,
-        assets,
-        commit,
-      });
-
-      if (summary.totalItems === 0) {
-        if (options.tool) {
-          console.log(`No installed assets for tool '${options.tool}'.`);
-        } else {
-          console.log('No installed assets found.');
-        }
+      const state = await loadState(projectRoot);
+      if (computeDesiredIds(state).size === 0) {
+        console.log('No managed assets to update.');
         return;
       }
 
-      if (summary.skippedNoToolConfig.length > 0) {
-        console.log(`Skipped ${summary.skippedNoToolConfig.length} tools with no config:`);
-        for (const toolName of summary.skippedNoToolConfig) {
-          console.log(`- ${toolName}`);
-        }
+      const summary = await reconcile({ projectRoot, config, assets, commit, mode: options.mode, state });
+
+      let installed = 0;
+      for (const perTool of Object.values(summary.tools || {})) {
+        installed += perTool.installed.length;
       }
 
-      if (summary.skippedMissing.length > 0) {
-        console.log(`Missing ${summary.skippedMissing.length} assets (skipped):`);
-        formatSkippedList(summary.skippedMissing, (entry) => `- ${entry.tool}: ${entry.id}`);
-      }
-
-      if (summary.skippedNoMapping.length > 0) {
-        console.log(`Skipped ${summary.skippedNoMapping.length} assets with no path mapping:`);
-        formatSkippedList(
-          summary.skippedNoMapping,
-          (entry) => `- ${entry.tool}: ${entry.id} (type: ${entry.type})`
-        );
-      }
-
-      if (summary.skippedLegacyHook.length > 0) {
-        console.log(
-          `Skipped ${summary.skippedLegacyHook.length} legacy hook assets (hook type is no longer supported):`
-        );
-        formatSkippedList(summary.skippedLegacyHook, (entry) => `- ${entry.tool}: ${entry.id}`);
-      }
-
-      if (summary.updated === 0) {
-        console.log('No assets updated.');
-        return;
-      }
-
-      console.log(`Updated ${summary.updated} assets.`);
+      console.log(`Reinstalled ${installed} asset(s) across ${Object.keys(summary.tools || {}).length} tools.`);
+      reportFailures(summary);
     });
 }
 

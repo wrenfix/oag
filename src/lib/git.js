@@ -39,7 +39,16 @@ async function getHeadCommit(repoPath) {
   return runGit(['rev-parse', 'HEAD'], { cwd: repoPath });
 }
 
+async function safeGetHeadCommit(repoPath) {
+  try {
+    return await getHeadCommit(repoPath);
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
 module.exports = {
   runGit,
   getHeadCommit,
+  safeGetHeadCommit,
 };

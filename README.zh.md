@@ -12,7 +12,8 @@
 
 - 将本地机器连接到远程注册表仓库。
 - 在读取或应用操作前自动同步注册表。
-- 按工具与类型交互式启用/禁用资产。
+- 按类型分组交互式启用/禁用资产，并应用到所有兼容工具。
+- 将资产打包成可共存启用的插件（plugin）。
 - 通过 `copy` 或 `symlink` 模式安装文件。
 - 按项目记录已安装项，便于后续重复更新。
 - 处理 Claude、Codex 与 OpenCode 的 MCP 资产配置格式。
@@ -24,8 +25,8 @@
   - Claude
   - Codex
   - OpenCode
-- `oag install` 提供交互式选择界面。
-- 支持通过 `oag preset` 按模板收敛安装。
+- `oag install` 提供交互式选择界面，现在会一次应用到所有兼容工具。
+- 基于插件的安装：可启用多个共存的插件（`oag plugin add` / `remove` / `list`）。
 - `oag update` 基于状态进行更新。
 - MCP 格式支持：
   - Claude：`.mcp.json`
@@ -75,7 +76,7 @@ oag --help
 说明：
 
 - 工具路径映射内置在 `oag` 中（不会从用户配置加载）。
-- 若未配置 remote，执行 `list` / `list-presets` / `install` / `preset` / `update` 时会提示配置。
+- 若未配置 remote，执行 `list` / `install` / `plugin` / `update` 时会提示配置。
 
 ## 快速开始（fork 工作流）
 
@@ -92,22 +93,22 @@ oag --help
    oag list --tool claude
    ```
 
-4. **列出可用模板**：
+4. **列出可用插件**：
 
    ```bash
-   oag list-presets --tool claude
+   oag plugin list
    ```
 
 5. **交互式安装资产**：
 
    ```bash
-   oag install --tool claude --mode copy
+   oag install --mode copy
    ```
 
-6. **按模板直接安装资产**：
+6. **启用一个插件**：
 
    ```bash
-   oag preset --tool claude --name oag-starter --mode copy
+   oag plugin add oag-starter
    ```
 
 7. **后续更新已安装资产**：
@@ -135,7 +136,7 @@ oag remote add https://github.com/<you>/<your-registry>.git main
 选项：
 
 - `--type <type>`：按类型过滤（如 `agent`、`skill`、`mcp`）
-- `--tool <name>`：按工具兼容性过滤
+- `--tool <name>`：按工具兼容性过滤（仅用于显示过滤）
 
 示例：
 
@@ -143,97 +144,112 @@ oag remote add https://github.com/<you>/<your-registry>.git main
 oag list --type skill --tool codex
 ```
 
-### `oag install [--tool <name>] [--project <path>] [--mode <mode>]`
+### `oag install [--project <path>] [--mode <mode>]`
 
-在项目中按工具交互式启用或禁用资产。
+交互式选择资产（按类型分组），并将其收敛到所有兼容工具。每个选中的资产都会安装到支持它的每个工具。
 
 选项：
 
-- `--tool <name>`：目标工具（如 `claude`、`codex`、`opencode`）
 - `--project <path>`：项目根目录（默认：当前目录）
 - `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
 
 示例：
 
 ```bash
-oag install --tool codex --project . --mode symlink
+oag install --project . --mode symlink
 ```
 
-### `oag list-presets [--tool <name>]`
+### `oag plugin list [--project <path>]`
 
-列出同步后的注册表中的模板。
+列出可用插件，并标记项目中哪些已启用。
 
 选项：
 
-- `--tool <name>`：仅显示定义了该工具的模板
+- `--project <path>`：项目根目录（默认：当前目录）
 
 示例：
 
 ```bash
-oag list-presets --tool codex
+oag plugin list
 ```
 
-### `oag preset [--name <preset>] [--tool <name>] [--project <path>] [--mode <mode>]`
+### `oag plugin add [name] [--project <path>] [--mode <mode>]`
 
-应用一个模板，并将受管资产收敛到模板定义的集合。
+启用一个插件。已启用的插件可以共存：实际安装集合是所有已启用插件与手动安装资产的并集。
 
 选项：
 
-- `--name <preset>`：模板名（不传则交互选择）
-- `--tool <name>`：目标工具（不传则交互选择）
+- `[name]`：插件名（不传则交互选择）
 - `--project <path>`：项目根目录（默认：当前目录）
 - `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
 
 示例：
 
 ```bash
-oag preset --name oag-starter --tool codex --project . --mode copy
+oag plugin add oag-starter --mode copy
 ```
 
-### `oag update [--tool <name>] [--project <path>] [--mode <mode>]`
+### `oag plugin remove <name> [--project <path>] [--mode <mode>]`
 
-重新安装/更新项目状态中已记录的资产。
+禁用一个插件。仍被其它已启用插件或 `oag install` 需要的资产会保留。
 
 选项：
 
-- `--tool <name>`：仅更新单个工具
+- `--project <path>`：项目根目录（默认：当前目录）
+- `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
+
+示例：
+
+```bash
+oag plugin remove oag-starter
+```
+
+### `oag update [--project <path>] [--mode <mode>]`
+
+按最新的 registry commit 重新安装当前受管资产。
+
+选项：
+
 - `--project <path>`：项目根目录（默认：当前目录）
 - `--mode <mode>`：强制本次更新模式（`copy` 或 `symlink`）
 
 示例：
 
 ```bash
-oag update --tool claude
+oag update
 ```
 
 ## oag 的工作方式
 
 ### 1) 注册表同步
 
-在执行 `list`、`list-presets`、`install`、`preset`、`update` 前，`oag` 会同步已配置注册表：
+在执行 `list`、`install`、`plugin`（add/remove/list）、`update` 前，`oag` 会同步已配置注册表：
 
 - 首次运行：clone 到 `~/.oag/registry/repo`（或自定义的 `registryPath`）
 - 后续运行：拉取远程、硬重置到目标分支、清理未跟踪文件
 
 ### 2) 安装目标（内置）
 
-`oag` 内置了不同资产类型的写入路径映射。
+`oag` 内置了不同资产类型的写入路径映射。资产会应用到所有兼容工具。
 
 **Claude**
 
 - `agent` -> `CLAUDE.md`
+- `subagent` -> `.claude/agents/<name>.md`
 - `skill` -> `.claude/skills/`
 - `mcp` -> `.mcp.json`
 
 **Codex**
 
 - `agent` -> `AGENTS.md`
+- `subagent` -> `.codex/agents/<name>.toml`（由 Markdown 转换）
 - `skill` -> `.codex/skills/`
 - `mcp` -> `.codex/config.toml`
 
 **OpenCode**
 
 - `agent` -> `AGENTS.md`
+- `subagent` -> `.opencode/agents/<name>.md`
 - `skill` -> `.opencode/skills/`
 - `mcp` -> `opencode.json`
 
@@ -243,53 +259,42 @@ oag update --tool claude
 
 - `.oag/state.json`（位于项目根目录）
 
-`update` 会基于该状态判断应刷新哪些内容及其目标位置。
+状态文件的结构为 `{ manual: [...], plugins: {...}, tools: {...} }`：
 
-## 模板文件格式
+- `manual`：通过 `oag install` 勾选的资产 ID。
+- `plugins`：已启用的插件及各自贡献的资产。
+- `tools`：每个工具的真实安装记录。
 
-模板文件放在 registry 仓库的 `presets/*.json`。
+期望的资产集合是 `manual` 与所有已启用插件的并集。`update` 会基于该状态判断应刷新哪些内容及其目标位置。
+
+## 插件文件格式
+
+插件文件放在 registry 仓库的 `plugins/*.json`，采用扁平 schema。
 
 示例：
 
 ```json
 {
   "name": "oag-starter",
-  "description": "Project starter preset for oag (codex + claude + opencode)",
-  "tools": {
-    "codex": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ],
-    "claude": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ],
-    "opencode": [
-      "agent/develop-agent",
-      "mcp/context7",
-      "mcp/chrome-devtools",
-      "skill/commit",
-      "skill/frontend-design",
-      "skill/skill-creator"
-    ]
-  }
+  "description": "Project starter plugin for oag",
+  "assets": [
+    "agent/develop-agent",
+    "subagent/code-reviewer",
+    "mcp/context7",
+    "mcp/chrome-devtools",
+    "skill/commit",
+    "skill/frontend-design",
+    "skill/skill-creator"
+  ]
 }
 ```
 
 说明：
 
 - 资产 ID 使用 `type/name` 格式。
-- `name` 与 `tools` 为必填；`description` 可选。
-- `tools` 至少定义一个工具，且 `tools.<tool>` 必须是字符串数组。
-- `oag preset` 采用严格校验：只要模板中有资产不存在、不兼容或无路径映射，就会直接失败，不做部分安装。
+- `name` 必填且唯一；`description` 可选。
+- `assets` 至少要包含一个资产 ID；每个资产都会安装到所有兼容工具。
+- 插件可共存：启用多个插件时安装它们资产的并集；移除某个插件只会移除那些不再被任何已启用插件或 `oag install` 需要的资产。
 
 ## MCP 说明
 
@@ -301,6 +306,15 @@ oag update --tool claude
 - OpenCode 旧版 `mcp` 数组格式会在安装/更新时自动迁移为对象格式。
 - 在重装/更新时，`oag` 会利用状态信息安全地回滚并重新应用受管 MCP 条目。
 
+## 子智能体（subagent）说明
+
+`subagent` 资产是一个 Markdown 文件，含最小 frontmatter（`name` 与 `description`），正文即系统提示：
+
+- 对 Claude 与 OpenCode，Markdown 会原样拷贝到 `.claude/agents/<name>.md` / `.opencode/agents/<name>.md`。
+- 对 Codex（其子智能体是 TOML），`oag` 会把源转换为 `.codex/agents/<name>.toml`，仅映射 `name`、`description` 与 `developer_instructions`（正文）。
+- **刻意不定义 `model` 与 `tools`/权限**，因为这些字段各工具互不通用；省略后各工具会回退为继承父/主会话的模型与工具。确有需要时可在源里写工具专属字段（对 Markdown 工具透传生效，Codex 转换时忽略）。
+- 一个 subagent 资产必须只包含一个文件。
+
 ## 故障排查
 
 - **错误：`No remote configured.`**
@@ -309,15 +323,15 @@ oag update --tool claude
   - `hook` 已弃用，不能再作为新类型进行列出或安装。
 - **错误：`Type 'prompt' has been removed and is no longer supported.`**
   - `prompt` 已弃用，不能再作为新类型进行列出或安装。
-- **错误：`Tool '<name>' is not configured.`**
-  - 使用内置工具名（`claude`、`codex` 或 `opencode`）。
 - **错误：`Invalid mode '<mode>'. Use symlink or copy.`**
   - 请选择 `--mode copy` 或 `--mode symlink`。
-- **错误：`Preset '<name>' not found`**
-  - 检查 `presets/*.json` 是否存在该模板，且 `name` 与参数一致。
-- **错误：`Preset '<name>' does not define assets for tool '<tool>'`**
-  - 在模板 `tools` 中补充对应工具键（如 `codex`、`claude` 或 `opencode`）。
-- **错误：`Invalid preset: ... (invalid asset ID '...', expected type/name)`**
+- **错误：`Plugin '<name>' not found`**
+  - 检查 `plugins/*.json` 是否存在该插件，且其 `name` 与参数一致。
+- **错误：`Plugin '<name>' has invalid assets`**
+  - 插件中有一个或多个资产在注册表中不存在，或对任何已配置工具都不适用。按报错修复对应的资产 ID。
+- **错误：`Invalid plugin: ... (invalid asset ID '...', expected type/name)`**
   - 将资产 ID 改为 `type/name` 格式（例如 `skill/commit`）。
-- **错误：`Preset '<name>' has invalid assets for tool '<tool>'`**
-  - 按报错修复资产不存在、工具不兼容或路径映射缺失问题。
+- **提示：`Plugin '<name>' is not enabled.`**
+  - 你尝试 `oag plugin remove` 一个当前项目中并未启用的插件。
+- **`oag preset` / `oag list-presets` 已被移除。**
+  - preset 已被 plugin 取代，请改用 `oag plugin list` / `oag plugin add` / `oag plugin remove`。

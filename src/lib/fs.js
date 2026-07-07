@@ -18,7 +18,12 @@ async function ensureDir(dirPath) {
   await fs.mkdir(dirPath, { recursive: true });
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 module.exports = {
   pathExists,
   ensureDir,
+  isPlainObject,
 };

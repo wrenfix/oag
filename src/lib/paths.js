@@ -10,6 +10,19 @@ async function resolveTargetPath(projectRoot, toolPaths, assetType, assetName, a
     throw new Error(`Missing path mapping for type '${assetType}'`);
   }
 
+  // Template mapping (contains '{name}'): install one flat file per asset, named
+  // after the asset (e.g. '.claude/agents/{name}.md' -> '.claude/agents/<name>.md').
+  // Used by directory-collection types like `subagent` whose tools expect flat,
+  // asset-named files rather than a `<name>/` subdirectory.
+  if (mapping.includes('{name}')) {
+    if (!assetName) {
+      throw new Error(`Missing asset name for type '${assetType}'`);
+    }
+    const rendered = mapping.replace(/\{name\}/g, assetName);
+    const targetPath = path.join(projectRoot, rendered);
+    return { targetPath, basePath: targetPath, isDir: false };
+  }
+
   const hasTrailingSlash = mapping.endsWith('/') || mapping.endsWith(path.sep);
   const normalizedMapping = mapping.replace(/[\\/]+$/, '');
   const targetBase = path.join(projectRoot, normalizedMapping);

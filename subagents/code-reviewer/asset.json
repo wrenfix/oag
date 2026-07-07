@@ -1,0 +1,9 @@
+{
+  "name": "code-reviewer",
+  "type": "subagent",
+  "description": "Reviews code changes for correctness, security, and missing tests",
+  "tools": ["claude", "codex", "opencode"],
+  "files": [
+    { "source": "agent.md" }
+  ]
+}
