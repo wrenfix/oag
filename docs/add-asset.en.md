@@ -9,7 +9,7 @@
 3. Add asset files (for example `AGENT.md`, `SKILL.md`, `mcp.json`).
 4. Add `plugins/*.json` as needed (for bundled installs).
 5. Commit and push to your registry branch.
-6. Validate from a consumer project using `oag list/plugin/install/update`.
+6. Validate from a consumer project using `oag list/install/update`.
 
 ## 2) Repository Boundaries
 
@@ -258,7 +258,7 @@ Minimal template:
 
 - Multiple plugins coexist: the installed set is the union of all enabled plugins plus any manually installed assets.
 - Disabling a plugin only removes assets that are no longer required by any other enabled plugin or manual install.
-- `oag plugin add` validates every asset in the plugin and fails without applying partial changes if any asset:
+- In the `oag install` menu, a plugin is shown as unavailable (disabled) and cannot be checked if any of its assets:
   - is not found in the registry;
   - is not applicable to any configured tool.
 - Validate asset visibility first with `oag list`, then maintain `plugins/*.json`.
@@ -266,14 +266,9 @@ Minimal template:
 ### 6.5 Maintainer Validation Steps
 
 ```bash
-# List plugins (shows which are enabled)
-oag plugin list
-
-# Enable a plugin (installs to all compatible tools)
-oag plugin add oag-starter --mode copy
-
-# Disable a plugin
-oag plugin remove oag-starter
+# Plugins are enabled/disabled in the interactive menu (a `plugins` category).
+# Check the plugin, then choose "Save and exit".
+oag install --mode copy
 ```
 
 ## 7) Publish and Validate (Maintainer Workflow)
@@ -296,11 +291,9 @@ oag remote add <your-registry-git-url> <branch>
 oag list --tool claude
 oag list --tool codex
 oag list --tool opencode
-oag plugin list
 
-# Validate install and update
+# Validate install (assets + plugins in one menu) and update
 oag install --mode copy
-oag plugin add oag-starter --mode copy
 oag update
 ```
 
@@ -322,12 +315,10 @@ Validation checklist:
    - Keep exactly one JSON config file (recommended: `mcp.json`).
 5. `Codex does not support MCP server type "sse"` / `OpenCode does not support MCP server type "sse"`
    - Replace `sse` with `stdio` or `http`.
-6. `Plugin '<name>' not found`
-   - Check that the plugin file exists under `plugins/*.json` and `name` matches.
-7. `Invalid plugin: ... (invalid asset ID '...', expected type/name)`
+6. `Invalid plugin: ... (invalid asset ID '...', expected type/name)`
    - Fix asset IDs to `type/name` format (for example `skill/commit`).
-8. `Plugin '<name>' has invalid assets`
-   - Resolve each item reported: the asset does not exist in the registry, or it is not applicable to any configured tool.
+7. A plugin shows as `(unavailable: ...)` in the `oag install` menu.
+   - One of its assets does not exist in the registry, or is not applicable to any configured tool. Fix the reported asset IDs in its `plugins/*.json`.
 
 ## 9) Maintenance Recommendations
 

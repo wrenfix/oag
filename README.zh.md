@@ -25,8 +25,8 @@
   - Claude
   - Codex
   - OpenCode
-- `oag install` 提供交互式选择界面，现在会一次应用到所有兼容工具。
-- 基于插件的安装：可启用多个共存的插件（`oag plugin add` / `remove` / `list`）。
+- `oag install` 提供交互式选择界面：在同一个菜单里勾选资产（按类型分组)与插件，一次应用到所有兼容工具。
+- 插件打包：可在 `oag install` 菜单里直接启用多个共存的插件。
 - `oag update` 基于状态进行更新。
 - MCP 格式支持：
   - Claude：`.mcp.json`
@@ -76,7 +76,7 @@ oag --help
 说明：
 
 - 工具路径映射内置在 `oag` 中（不会从用户配置加载）。
-- 若未配置 remote，执行 `list` / `install` / `plugin` / `update` 时会提示配置。
+- 若未配置 remote，执行 `list` / `install` / `update` 时会提示配置。
 
 ## 快速开始（fork 工作流）
 
@@ -93,25 +93,15 @@ oag --help
    oag list --tool claude
    ```
 
-4. **列出可用插件**：
-
-   ```bash
-   oag plugin list
-   ```
-
-5. **交互式安装资产**：
+4. **交互式安装资产与插件**：
 
    ```bash
    oag install --mode copy
    ```
 
-6. **启用一个插件**：
+   菜单中除资产类型外还有一个 `plugins` 分类；勾选所需项后选择 `Save and exit`。
 
-   ```bash
-   oag plugin add oag-starter
-   ```
-
-7. **后续更新已安装资产**：
+5. **后续更新已安装资产**：
 
    ```bash
    oag update
@@ -146,7 +136,7 @@ oag list --type skill --tool codex
 
 ### `oag install [--project <path>] [--mode <mode>]`
 
-交互式选择资产（按类型分组），并将其收敛到所有兼容工具。每个选中的资产都会安装到支持它的每个工具。
+交互式选择资产（按类型分组）与插件，并将其收敛到所有兼容工具。每个选中的资产都会安装到支持它的每个工具。插件在同一菜单中作为 `plugins` 分类出现：勾选某个插件即启用其打包的资产，取消勾选即禁用。选择是整份覆盖：`Save and exit` 时勾选的内容即为最终安装集合。
 
 选项：
 
@@ -159,50 +149,7 @@ oag list --type skill --tool codex
 oag install --project . --mode symlink
 ```
 
-### `oag plugin list [--project <path>]`
-
-列出可用插件，并标记项目中哪些已启用。
-
-选项：
-
-- `--project <path>`：项目根目录（默认：当前目录）
-
-示例：
-
-```bash
-oag plugin list
-```
-
-### `oag plugin add [name] [--project <path>] [--mode <mode>]`
-
-启用一个插件。已启用的插件可以共存：实际安装集合是所有已启用插件与手动安装资产的并集。
-
-选项：
-
-- `[name]`：插件名（不传则交互选择）
-- `--project <path>`：项目根目录（默认：当前目录）
-- `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
-
-示例：
-
-```bash
-oag plugin add oag-starter --mode copy
-```
-
-### `oag plugin remove <name> [--project <path>] [--mode <mode>]`
-
-禁用一个插件。仍被其它已启用插件或 `oag install` 需要的资产会保留。
-
-选项：
-
-- `--project <path>`：项目根目录（默认：当前目录）
-- `--mode <mode>`：`copy` 或 `symlink`（默认：`copy`）
-
-示例：
-
-```bash
-oag plugin remove oag-starter
-```
+若某插件的资产在注册表中缺失、或对任何已配置工具都不适用，则在菜单中显示为不可用（disabled）。已启用但当前不可解析的插件会被原样保留，而不会被丢弃。
 
 ### `oag update [--project <path>] [--mode <mode>]`
 
@@ -223,7 +170,7 @@ oag update
 
 ### 1) 注册表同步
 
-在执行 `list`、`install`、`plugin`（add/remove/list）、`update` 前，`oag` 会同步已配置注册表：
+在执行 `list`、`install`、`update` 前，`oag` 会同步已配置注册表：
 
 - 首次运行：clone 到 `~/.oag/registry/repo`（或自定义的 `registryPath`）
 - 后续运行：拉取远程、硬重置到目标分支、清理未跟踪文件
@@ -261,8 +208,8 @@ oag update
 
 状态文件的结构为 `{ manual: [...], plugins: {...}, tools: {...} }`：
 
-- `manual`：通过 `oag install` 勾选的资产 ID。
-- `plugins`：已启用的插件及各自贡献的资产。
+- `manual`：单独勾选的资产 ID（`oag install` 中非插件的勾选项）。
+- `plugins`：已启用的插件及各自贡献的资产（`oag install` 中的 `plugins` 分类）。
 - `tools`：每个工具的真实安装记录。
 
 期望的资产集合是 `manual` 与所有已启用插件的并集。`update` 会基于该状态判断应刷新哪些内容及其目标位置。
@@ -294,7 +241,7 @@ oag update
 - 资产 ID 使用 `type/name` 格式。
 - `name` 必填且唯一；`description` 可选。
 - `assets` 至少要包含一个资产 ID；每个资产都会安装到所有兼容工具。
-- 插件可共存：启用多个插件时安装它们资产的并集；移除某个插件只会移除那些不再被任何已启用插件或 `oag install` 需要的资产。
+- 插件可共存：启用多个插件时安装它们资产的并集；取消勾选某个插件只会移除那些不再被任何已启用插件或某个单独 `oag install` 勾选项需要的资产。
 
 ## MCP 说明
 
@@ -325,13 +272,9 @@ oag update
   - `prompt` 已弃用，不能再作为新类型进行列出或安装。
 - **错误：`Invalid mode '<mode>'. Use symlink or copy.`**
   - 请选择 `--mode copy` 或 `--mode symlink`。
-- **错误：`Plugin '<name>' not found`**
-  - 检查 `plugins/*.json` 是否存在该插件，且其 `name` 与参数一致。
-- **错误：`Plugin '<name>' has invalid assets`**
-  - 插件中有一个或多个资产在注册表中不存在，或对任何已配置工具都不适用。按报错修复对应的资产 ID。
+- **某插件在 `oag install` 中显示为 `(unavailable: ...)` 且无法勾选。**
+  - 插件中有一个或多个资产在注册表中不存在，或对任何已配置工具都不适用。请在其 `plugins/*.json` 中按报错修复对应的资产 ID。
 - **错误：`Invalid plugin: ... (invalid asset ID '...', expected type/name)`**
   - 将资产 ID 改为 `type/name` 格式（例如 `skill/commit`）。
-- **提示：`Plugin '<name>' is not enabled.`**
-  - 你尝试 `oag plugin remove` 一个当前项目中并未启用的插件。
-- **`oag preset` / `oag list-presets` 已被移除。**
-  - preset 已被 plugin 取代，请改用 `oag plugin list` / `oag plugin add` / `oag plugin remove`。
+- **`oag plugin` / `oag preset` / `oag list-presets` 已被移除。**
+  - 插件现在在 `oag install` 内选择（菜单中的 `plugins` 分类），不再有独立的 `plugin` 命令。

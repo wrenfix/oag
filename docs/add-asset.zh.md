@@ -9,7 +9,7 @@
 3. 添加资产文件（如 `AGENT.md`、`SKILL.md`、`mcp.json`）。
 4. 按需新增 `plugins/*.json`（用于批量安装）。
 5. 提交并推送到你的 registry 远程分支。
-6. 在使用 `oag` 的业务项目中执行 `list/plugin/install/update` 验证。
+6. 在使用 `oag` 的业务项目中执行 `list/install/update` 验证。
 
 ## 2) 仓库边界说明
 
@@ -258,7 +258,7 @@ MCP 注意事项：
 
 - 多个插件可以共存：安装集合是所有已启用插件与手动安装资产的并集。
 - 停用某个插件时，只会移除不再被其它已启用插件或手动 install 需要的资产。
-- `oag plugin add` 会校验插件中的每个资产，只要有一项不满足就直接失败、不做部分安装：
+- 在 `oag install` 菜单中，若某插件的任一资产不满足以下条件，则显示为不可用（disabled）且无法勾选：
   - 资产在 registry 中不存在；
   - 资产对所有已配置工具都不适用。
 - 建议先通过 `oag list` 确认资产可见，再维护 `plugins/*.json`。
@@ -266,14 +266,9 @@ MCP 注意事项：
 ### 6.5 维护者验证步骤
 
 ```bash
-# 列出插件（显示哪些已启用）
-oag plugin list
-
-# 启用插件（安装到所有兼容工具）
-oag plugin add oag-starter --mode copy
-
-# 停用插件
-oag plugin remove oag-starter
+# 插件在交互菜单中启用/停用（菜单里的 `plugins` 分类）。
+# 勾选插件后选择 "Save and exit"。
+oag install --mode copy
 ```
 
 ## 7) 发布与验证（维护者视角）
@@ -296,11 +291,9 @@ oag remote add <your-registry-git-url> <branch>
 oag list --tool claude
 oag list --tool codex
 oag list --tool opencode
-oag plugin list
 
-# 验证安装与更新
+# 验证安装（资产与插件在同一菜单中）与更新
 oag install --mode copy
-oag plugin add oag-starter --mode copy
 oag update
 ```
 
@@ -322,12 +315,10 @@ oag update
    - 仅保留一个配置 JSON（推荐 `mcp.json`）。
 5. `Codex does not support MCP server type "sse"` / `OpenCode does not support MCP server type "sse"`
    - 将 `sse` 改为 `stdio` 或 `http`。
-6. `Plugin '<name>' not found`
-   - 检查插件文件是否存在于 `plugins/*.json`，以及 `name` 是否拼写一致。
-7. `Invalid plugin: ... (invalid asset ID '...', expected type/name)`
+6. `Invalid plugin: ... (invalid asset ID '...', expected type/name)`
    - 将资产 ID 改为 `type/name` 格式（例如 `skill/commit`）。
-8. `Plugin '<name>' has invalid assets`
-   - 按报错逐项修复：资产在 registry 中不存在，或对所有已配置工具都不适用。
+7. 某插件在 `oag install` 菜单中显示为 `(unavailable: ...)`。
+   - 其某个资产在 registry 中不存在,或对所有已配置工具都不适用。请在其 `plugins/*.json` 中按报错修复对应资产 ID。
 
 ## 9) 维护建议
 

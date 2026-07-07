@@ -25,8 +25,8 @@
   - Claude
   - Codex
   - OpenCode
-- **Interactive selection UI** in `oag install`, now applied to all compatible tools at once.
-- **Plugin-based install**: enable multiple coexisting plugins (`oag plugin add` / `remove` / `list`).
+- **Interactive selection UI** in `oag install`: pick assets (grouped by type) and plugins in one menu, applied to all compatible tools at once.
+- **Plugin bundles**: enable multiple coexisting plugins directly from the `oag install` menu.
 - **State-based updates** with `oag update`.
 - **MCP support** with format handling:
   - Claude: `.mcp.json`
@@ -76,7 +76,7 @@ Minimal config (recommended):
 Notes:
 
 - Tool path mappings are built into `oag` (not loaded from user config).
-- If no remote is configured, `list` / `install` / `plugin` / `update` will prompt for it.
+- If no remote is configured, `list` / `install` / `update` will prompt for it.
 
 ## Quick start (with fork workflow)
 
@@ -93,25 +93,15 @@ Notes:
    oag list --tool claude
    ```
 
-4. **List available plugins**:
-
-   ```bash
-   oag plugin list
-   ```
-
-5. **Install assets interactively**:
+4. **Install assets and plugins interactively**:
 
    ```bash
    oag install --mode copy
    ```
 
-6. **Enable a plugin**:
+   The menu lists asset types plus a `plugins` category; check whatever you want and choose `Save and exit`.
 
-   ```bash
-   oag plugin add oag-starter
-   ```
-
-7. **Update installed assets later**:
+5. **Update installed assets later**:
 
    ```bash
    oag update
@@ -146,7 +136,7 @@ oag list --type skill --tool codex
 
 ### `oag install [--project <path>] [--mode <mode>]`
 
-Interactively select assets (grouped by type) and reconcile them across all compatible tools. Each selected asset is installed to every tool that supports it.
+Interactively select assets (grouped by type) and plugins, then reconcile them across all compatible tools. Each selected asset is installed to every tool that supports it. Plugins appear as a `plugins` category in the same menu; checking a plugin enables its bundled assets, unchecking one disables it. The selection is a full overwrite: whatever is checked at `Save and exit` becomes the installed set.
 
 Options:
 
@@ -159,50 +149,7 @@ Example:
 oag install --project . --mode symlink
 ```
 
-### `oag plugin list [--project <path>]`
-
-List available plugins and mark which ones are enabled in the project.
-
-Options:
-
-- `--project <path>`: project root (default: current directory)
-
-Example:
-
-```bash
-oag plugin list
-```
-
-### `oag plugin add [name] [--project <path>] [--mode <mode>]`
-
-Enable a plugin. Enabled plugins coexist: the installed set is the union of every enabled plugin plus any manually installed assets.
-
-Options:
-
-- `[name]`: plugin name (if omitted, choose interactively)
-- `--project <path>`: project root (default: current directory)
-- `--mode <mode>`: `copy` or `symlink` (default: `copy`)
-
-Example:
-
-```bash
-oag plugin add oag-starter --mode copy
-```
-
-### `oag plugin remove <name> [--project <path>] [--mode <mode>]`
-
-Disable a plugin. Assets still required by another enabled plugin or by `oag install` are kept.
-
-Options:
-
-- `--project <path>`: project root (default: current directory)
-- `--mode <mode>`: `copy` or `symlink` (default: `copy`)
-
-Example:
-
-```bash
-oag plugin remove oag-starter
-```
+Plugins whose assets are missing from the registry or apply to no configured tool are shown as unavailable (disabled) in the menu. A plugin already enabled but no longer resolvable is preserved as-is rather than being dropped.
 
 ### `oag update [--project <path>] [--mode <mode>]`
 
@@ -223,7 +170,7 @@ oag update
 
 ### 1) Registry sync
 
-Before `list`, `install`, `plugin` (add/remove/list), and `update`, `oag` syncs your configured registry:
+Before `list`, `install`, and `update`, `oag` syncs your configured registry:
 
 - first run: clone into `~/.oag/registry/repo` (or your custom `registryPath`)
 - later runs: fetch remote, hard reset to configured branch, clean untracked files
@@ -261,8 +208,8 @@ Installed results are tracked in:
 
 The state file has the shape `{ manual: [...], plugins: {...}, tools: {...} }`:
 
-- `manual`: asset IDs selected through `oag install`.
-- `plugins`: enabled plugins and the assets each one contributes.
+- `manual`: individually selected asset IDs (the non-plugin checkboxes in `oag install`).
+- `plugins`: enabled plugins and the assets each one contributes (the `plugins` category in `oag install`).
 - `tools`: the real per-tool installation records.
 
 The desired asset set is the union of `manual` and every enabled plugin. `update` uses this state to know what should be refreshed and where.
@@ -294,7 +241,7 @@ Notes:
 - Asset IDs use `type/name` format.
 - `name` is required and must be unique; `description` is optional.
 - `assets` must list at least one asset ID; each asset is installed to every compatible tool.
-- Plugins coexist: enabling multiple plugins installs the union of their assets. Removing one plugin only removes the assets that are no longer required by any enabled plugin or by `oag install`.
+- Plugins coexist: enabling multiple plugins installs the union of their assets. Deselecting one plugin only removes the assets that are no longer required by any enabled plugin or by an individual `oag install` selection.
 
 ## MCP notes
 
@@ -332,13 +279,9 @@ and `description`) and the system prompt as the body:
   - `prompt` is deprecated and cannot be listed/installed as a new type.
 - **Error: `Invalid mode '<mode>'. Use symlink or copy.`**
   - Choose `--mode copy` or `--mode symlink`.
-- **Error: `Plugin '<name>' not found`**
-  - Check whether the plugin exists under `plugins/*.json` and its `name` matches your argument.
-- **Error: `Plugin '<name>' has invalid assets`**
-  - One or more of the plugin's assets do not exist in the registry, or are not applicable to any configured tool. Fix the reported asset IDs.
+- **A plugin shows as `(unavailable: ...)` and cannot be checked in `oag install`.**
+  - One or more of the plugin's assets do not exist in the registry, or are not applicable to any configured tool. Fix the reported asset IDs in its `plugins/*.json`.
 - **Error: `Invalid plugin: ... (invalid asset ID '...', expected type/name)`**
   - Use `type/name` format for each asset ID (for example `skill/commit`).
-- **Message: `Plugin '<name>' is not enabled.`**
-  - You tried to `oag plugin remove` a plugin that is not enabled in this project.
-- **`oag preset` / `oag list-presets` no longer exist.**
-  - Presets have been replaced by plugins. Use `oag plugin list` / `oag plugin add` / `oag plugin remove` instead.
+- **`oag plugin` / `oag preset` / `oag list-presets` no longer exist.**
+  - Plugins are now selected inside `oag install` (a `plugins` category in its menu). There is no separate `plugin` command.
